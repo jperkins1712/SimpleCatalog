@@ -1,3 +1,5 @@
 {"name":"Rogue",
 "description":"Rogues have the signature ability of Stealth - which allows them to go invisible and sneak up on their targets. They have three different damage specializations.",
-"image":"/data_images/rogue.png"}
+"image":"/data_images/rogue.png",
+"tag":"rogue",
+"imageType":".png"}

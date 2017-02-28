@@ -23,16 +23,16 @@ const DOUBLE_CRLF = Buffer.from([0x0D,0x0A,0x0D,0x0A]);
  */
 function multipart(req, res, next) {
   var chunks = [];
-
+  console.log("1");
   // Handle error events by logging the error
   // and responding with a 500 server error
   req.on('error', function(err){
-    console.log(err);
+    //console.log(err);
     res.statusCode = 500;
     res.statusMessage = "Server error";
     res.end("Server err");
   });
-
+  console.log("2");
   // Handle data events by appending the new
   // data to the chunks array.
   req.on('data', function(chunk) {
@@ -44,6 +44,7 @@ function multipart(req, res, next) {
   // processBody function, and sending its results
   // to the callback function.  Also, supply the
   // boundary bytes defined in our header.
+  console.log("3");
   req.on('end', function() {
     // recombine our chunks into a single buffer
     var body = Buffer.concat(chunks);
@@ -63,6 +64,7 @@ function multipart(req, res, next) {
 
         // store the processed contents as the req.body parameter
         req.body = contents;
+        console.log(contents);
 
         // trigger the next callback with the modified req object
         next(req, res);

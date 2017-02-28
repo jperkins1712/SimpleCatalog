@@ -1,0 +1,11 @@
+<!doctype html>
+  <head>
+    <title><%= context.title %></title>
+    <link href="catalog.css" rel="stylesheet" type="text/css">
+  </head>
+  <body>
+    <h1><%= context.title = context.title.replace(/\+/g, ' ') %></h1>
+    <%= context.description %>
+    <%= context.imageTag %>
+  </body>
+</html>

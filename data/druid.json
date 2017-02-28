@@ -1,3 +1,5 @@
 {"name":"Druid",
 "description":"Druids are an extremely versatile class, able to fulfill every role in the game - including tankm healer, and ranged and melee DPS. They can shapeshift into different animal forms to complete the different tasks.",
-"image":"/data_images/druid.png"}
+"image":"/data_images/druid.png",
+"tag":"druid",
+"imageType":".png"}

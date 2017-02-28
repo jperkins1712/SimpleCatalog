@@ -16,13 +16,6 @@ var port = 1712;
 // cached files
 var config = JSON.parse(fs.readFileSync('config.json'));
 var stylesheet = fs.readFileSync('catalog.css');
-var dk = JSON.parse(fs.readFileSync('data/dk.json'));
-var druid = JSON.parse(fs.readFileSync('data/druid.json'));
-var monk = JSON.parse(fs.readFileSync('data/monk.json'));
-var priest = JSON.parse(fs.readFileSync('data/priest.json'));
-var rogue = JSON.parse(fs.readFileSync('data/rogue.json'));
-
-var data = [dk, druid, monk, priest, rogue];
 template.loadDir('templates');
 
 // functions
@@ -44,10 +37,10 @@ function getImageNames(callback) {
   * @return - an array of HTML img tags
   */
 function imageNamesToTags(filenames) {
-  console.log(filenames);
   return filenames.map(function(fileName) {
     var fns = fileName.substring(0, fileName.length-4);
-    return `<a href="templates/${fns}.html"> <img src="${fileName}" alt="${fileName}"> </a>`;
+    if (filenames.length == 1) { return `<img src="${fileName}" alt="${fileName}"> </a>` }
+    else return `<a href="templates/${fns}.html"> <img src="${fileName}" alt="${fileName}"> </a>`;
   });
 }
 
@@ -58,6 +51,9 @@ function imageNamesToTags(filenames) {
   * @param res - the response object
   */
 function serveImage(filename, req, res) {
+  if (filename.includes('templates')) {
+    filename = filename.substring(11, filename.length);
+  }
   fs.readFile('data_images/' + decodeURIComponent(filename), function(err, data){
     if(err) {
       console.error(err);
@@ -82,6 +78,21 @@ function buildCatalog(imageTags) {
   });
 }
 
+/** @function buildClassPage
+  * Builds the individual class page for an items
+  * @param index - the index of the item being displayed in the array of items.
+  * @param imgName - the name of the image to be displayed from the data_images folder
+  * @param htmlName - the html file to be displayed
+  */
+function buildClassPage(obj, imgName, htmlName) {
+  var singleArrayOfImageName = [imgName];
+  return template.render('class.html', {
+    title: obj.name,
+    description: obj.description,
+    imageTag: imageNamesToTags(singleArrayOfImageName)
+  });
+}
+
 /** @function serveCatalog
   * Serves the HTML page that shows the catalog of items
   * @param req - the request object
@@ -101,14 +112,90 @@ function serveCatalog(req, res) {
   })
 }
 
+/** @function serveClassPage
+  * Serves the HTML page that shows the individual class information
+  * @param req - request object
+  * @param res - response object
+  */
+function serveClassPage(req, res) {
+
+  var final = req.url.substring(11, req.url.length);
+  var newFinal = final.substring(0, final.length-5)
+  var num = 2;
+  var json = JSON.parse(fs.readFileSync('data/' + newFinal + '.json'));
+  var imageName = newFinal + json.imageType;
+
+  res.setHeader('Content-Type', 'text/html');
+  console.log(num + " " + imageName + " " + final);
+  res.end(buildClassPage(json, imageName, final));
+}
+
 /** @function uploadObject
   * Processes an http POST request
   * @param req - the request object
   * @param res - the response object
   */
 function uploadObject(req, res) {
+  multipart(req, res, function(err, content) {
+    console.log("4");
+
+    //if (err) {
+    //  console.error("no file");
+    //  res.statusCode = 500;
+    //  res.end();
+    //  return;
+    //}
+    // this was the only way i could get it to work... the error is being passed the request. Im afraid to change anything because its kind of working.
+    console.log(err.body.name); console.log(err.body.description);
+    var nospacename = err.body.name.replace(" ", "");
+
+    var info = {};
+    info['name'] = err.body.name;
+    info['description'] = err.body.description;
+    info['image'] = '/data_images/' + err.body.fileupload.filename;
+    info['tag'] = nospacename;
+    info['imageType'] = '.png';
+
+    fs.writeFile('data_images/' + err.body.fileupload.filename, err.body.fileupload.data, function(err) {
+      if(err) {
+        console.error(err);
+        res.statusCode = 500;
+        res.end();
+        return;
+      }
+      serveCatalog(req, res);
+    });
+    console.log(JSON.stringify(info));
+    fs.writeFile('data/' + nospacename + '.json', JSON.stringify(info), function(err) {
+      if (err) {
+        console.error(err);
+        return;
+      };
+      console.log("File has been created.");
+    });
+
+    //var temp = JSON.parse(fs.readFileSync('data/' + nospacename + '.json'));
+    //console.log(temp);
+    //data.push(temp);
+  });
 
 }
+
+// taken and modified from http://stackoverflow.com/questions/2090551/parse-query-string-in-javascript
+function parseQuery(qstr) {
+        var query = {};
+        var a = (qstr[0] === '?' ? qstr.substr(1) : qstr).split('&');
+        for (var i = 0; i < a.length; i++) {
+            var b = a[i].split('=');
+            query[decodeURIComponent(b[0])] = decodeURIComponent(b[1] || '');
+        }
+        return query;
+}
+
+function jsonFromQuery(query) {
+
+}
+
 
 /** @function handleRequest
   * Handles http requests.
@@ -120,31 +207,34 @@ function handleRequest(req, res) {
   var urlParts = url.parse(req.url);
 
   if(urlParts.query){
+    // handle title change
     var matches = /title=(.+)($|&)/.exec(urlParts.query);
-    if(matches && matches[1]){
-      config.title = decodeURIComponent(matches[1]);
-      var newTitle = JSON.stringify(config);
-      newTitle = newTitle.replace(/\+/g, ' ');
-      console.log(newTitle);
-      fs.writeFile('config.json', newTitle);
+    if (urlParts.query.includes('title=')) {
+      if(matches && matches[1]){
+        config.title = decodeURIComponent(matches[1]);
+        fs.writeFile('config.json', JSON.stringify(config));
+      }
     }
   }
 
-  switch(urlParts.pathname) {
-    case '/':
-    case '/catalog':
-      if (req.method == 'GET') {
-        serveCatalog(req, res);
-      } else if (req.method == 'POST') {
-        uploadObject(req, res);
-      }
-      break;
-    case '/catalog.css':
-      res.setHeader('Content-Type', 'text/css');
-      res.end(stylesheet);
-      break;
-    default:
-      serveImage(req.url, req, res);
+  if (req.method == 'POST') {
+    // handle query
+    uploadObject(req, res);
+  }
+  else if (urlParts.pathname === '/' || urlParts.pathname === '/catalog') {
+    if (req.method == 'GET') {
+      serveCatalog(req, res);
+    }
+  }
+  else if (urlParts.pathname.includes('/templates') && !urlParts.pathname.includes('catalog') && !urlParts.pathname.includes('.png')) {
+    serveClassPage(req, res);
+  }
+  else if (urlParts.pathname.includes('/catalog.css')) {
+    res.setHeader('Content-Type', 'text/css');
+    res.end(stylesheet);
+  }
+  else {
+    serveImage(req.url, req, res);
   }
 }
 

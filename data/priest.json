@@ -1,3 +1,5 @@
 {"name":"Priest",
 "description":"Priests are powerful healers and also have a ranged DPS specialization.",
-"image":"/data_images/priest.png"}
+"image":"/data_images/priest.png",
+"tag":"priest",
+"imageType":".png"}
